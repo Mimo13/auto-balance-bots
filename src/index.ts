@@ -1,10 +1,5 @@
+import { loadConfig } from './config.js';
 import { buildSimpleAdvisorReport } from './advisor/simple-advisor.js';
-
-function parsePairs(argv: string[]): string[] {
-  const idx = argv.indexOf('--pairs');
-  if (idx >= 0 && argv[idx + 1]) return argv[idx + 1].split(',').map((s) => s.trim()).filter(Boolean);
-  return (process.env.ADVISOR_PAIRS ?? 'SOLUSDC,BTCUSDC,ETHUSDC,XLMUSDC').split(',').map((s) => s.trim()).filter(Boolean);
-}
 
 async function main() {
   const command = process.argv[2] ?? 'advisor';
@@ -13,16 +8,21 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  const network = process.env.BINANCE_ENV === 'mainnet' ? 'mainnet' : 'testnet';
-  const pairs = parsePairs(process.argv.slice(3));
+
+  const config = loadConfig(process.env);
+
+  // CLI --pairs flag overrides env
+  const cliPairs = parseCliPairs(process.argv.slice(3));
+  const pairs = cliPairs.length > 0 ? cliPairs : config.advisorPairs;
+
   const report = await buildSimpleAdvisorReport({
     pairs,
-    network,
-    reservePct: Number(process.env.GLOBAL_USDC_RESERVE_PCT ?? 0.25),
-    maxPairWeightPct: Number(process.env.MAX_PAIR_WEIGHT_PCT ?? 0.45),
+    network: config.binanceEnv,
+    reservePct: config.globalUsdcReservePct,
+    maxPairWeightPct: config.maxPairWeightPct,
   });
 
-  console.log(`auto-balance-bots advisor · network=${network} · pairs=${pairs.join(',')}`);
+  console.log(`auto-balance-bots advisor · tradingMode=${config.tradingMode} · network=${config.binanceEnv} · pairs=${pairs.join(',')}`);
   console.log('symbol      ok   price          score  target%  suggested range');
   for (const r of report) {
     const range = r.suggestedRange ? `${r.suggestedRange.lower} - ${r.suggestedRange.upper} (${r.suggestedRange.widthPct}%)` : '-';
@@ -30,6 +30,14 @@ async function main() {
     for (const reason of r.reasons) console.log(`  · ${reason}`);
     for (const warning of r.warnings) console.log(`  ! ${warning}`);
   }
+}
+
+function parseCliPairs(argv: string[]): string[] {
+  const idx = argv.indexOf('--pairs');
+  if (idx >= 0 && argv[idx + 1]) {
+    return argv[idx + 1].split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  return [];
 }
 
 main().catch((err) => {

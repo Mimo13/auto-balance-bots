@@ -1,5 +1,6 @@
 import { BinancePublicClient } from '../exchange/binance-public-client.js';
-import type { AdvisorPairReport, Ticker24h } from '../types.js';
+import type { Ticker } from '../exchange/exchange-client.js';
+import type { AdvisorPairReport } from '../types.js';
 
 export interface AdvisorOptions {
   pairs: string[];
@@ -8,7 +9,7 @@ export interface AdvisorOptions {
   maxPairWeightPct: number;
 }
 
-function scoreTicker(t: Ticker24h): { score: number; reasons: string[]; warnings: string[]; widthPct: number } {
+function scoreTicker(t: Ticker): { score: number; reasons: string[]; warnings: string[]; widthPct: number } {
   const mid = t.lastPrice || (t.highPrice + t.lowPrice) / 2;
   const dayRangePct = mid > 0 ? (t.highPrice - t.lowPrice) / mid : 0;
   const spreadPct = t.lastPrice > 0 ? Math.max(0, (t.askPrice - t.bidPrice) / t.lastPrice) : 1;
@@ -33,7 +34,7 @@ export async function buildSimpleAdvisorReport(options: AdvisorOptions): Promise
   const rawReports: AdvisorPairReport[] = [];
   for (const symbol of options.pairs) {
     try {
-      const ticker = await client.getTicker24h(symbol);
+      const ticker = await client.getTicker(symbol);
       const scored = scoreTicker(ticker);
       const half = scored.widthPct / 2;
       rawReports.push({
