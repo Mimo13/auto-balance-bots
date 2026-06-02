@@ -25,8 +25,28 @@ El objetivo es reutilizar aprendizajes y piezas probadas de `grvt-binance-bots` 
 ```bash
 npm install
 npm run advisor -- --pairs SOLUSDC,BTCUSDC,ETHUSDC,XLMUSDC
+npm run advisor -- --pairs SOLUSDC,BTCUSDC --format json
+npm run advisor -- --pairs SOLUSDC --format md
 npm run build
 ```
+
+## API REST
+
+Advisor también expone API REST (sin auth, solo local):
+
+```bash
+# Arrancar servidor (puerto por defecto 3141)
+npm run api
+
+# Endpoints
+curl http://localhost:3141/health
+curl http://localhost:3141/api/advisor/report
+curl -X POST http://localhost:3141/api/advisor/preview \
+  -H 'Content-Type: application/json' \
+  -d '{"pairs":["BTCUSDC","ETHUSDC"],"capital":500}'
+```
+
+Puerto configurable via `API_PORT` env var. Sin dependencias externas (usa `node:http`).
 
 ## Documentación
 
